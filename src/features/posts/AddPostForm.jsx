@@ -1,29 +1,47 @@
 import { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { postAdded } from "./PostSlice";
-import { selectAllUsers } from "../users/UserSlice";
+import { addNewPost } from "./postsSlice.jsx";
+import { selectAllUsers } from "../users/UserSlice.jsx";
 
 const AddPostForm = () => {
+  const dispatch = useDispatch();
+
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [userId, setUserId] = useState("");
+  const [addRequestStatus, setAddRequestStatus] = useState("idle");
 
-  const dispatch = useDispatch();
   const users = useSelector(selectAllUsers);
-  // console.log(users)
+
   const onTitleChanged = (e) => setTitle(e.target.value);
   const onContentChanged = (e) => setContent(e.target.value);
   const onAuthorChanged = (e) => setUserId(e.target.value);
 
-  const onSavePostClick = () => {
-    if (title && content) {
-      dispatch(postAdded(title, content, userId));
-      setTitle("");
-      setContent("");
+  const canSave =
+    [title, content, userId].every(Boolean) && addRequestStatus === "idle";
+
+  const onSavePostClicked = () => {
+    if (canSave) {
+      try {
+        setAddRequestStatus("pending");
+        dispatch(addNewPost({ title, body: content, userId })).unwrap();
+
+        setTitle("");
+        setContent("");
+        setUserId("");
+      } catch (err) {
+        console.error("Failed to save the post", err);
+      } finally {
+        setAddRequestStatus("idle");
+      }
     }
   };
 
-  const canSave = Boolean(title) && Boolean(content) && Boolean(userId);
+  const usersOptions = users.map((user) => (
+    <option key={user.id} value={user.id}>
+      {user.name}
+    </option>
+  ));
 
   return (
     <section>
@@ -37,14 +55,10 @@ const AddPostForm = () => {
           value={title}
           onChange={onTitleChanged}
         />
-        <label>Author:</label>
+        <label htmlFor="postAuthor">Author:</label>
         <select id="postAuthor" value={userId} onChange={onAuthorChanged}>
-          <option></option>
-          {users.map((user) => (
-            <option key={user.id} value={user.id}>
-              {user.name}
-            </option>
-          ))}
+          <option value=""></option>
+          {usersOptions}
         </select>
         <label htmlFor="postContent">Content:</label>
         <textarea
@@ -53,7 +67,7 @@ const AddPostForm = () => {
           value={content}
           onChange={onContentChanged}
         />
-        <button type="button" onClick={onSavePostClick} disabled={!canSave}>
+        <button type="button" onClick={onSavePostClicked} disabled={!canSave}>
           Save Post
         </button>
       </form>
